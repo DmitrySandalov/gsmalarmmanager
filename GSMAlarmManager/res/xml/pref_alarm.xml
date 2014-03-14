@@ -1,0 +1,18 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <EditTextPreference
+        android:defaultValue="+79210000000"
+        android:dialogTitle="@string/pref_alarm_num_dialog"
+        android:inputType="phone"
+        android:key="alarm_number"
+        android:title="@string/pref_alarm_num_title"
+        android:summary="@string/pref_alarm_num_description" />
+    <EditTextPreference
+        android:defaultValue="123456"
+        android:dialogTitle="@string/pref_alarm_pass_dialog"
+        android:inputType="number"
+        android:key="alarm_password"
+        android:title="@string/pref_alarm_pass_title" 
+        android:summary="@string/pref_alarm_pass_description" />
+
+</PreferenceScreen>
