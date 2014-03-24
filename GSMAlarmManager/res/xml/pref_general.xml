@@ -5,5 +5,15 @@
         android:key="alerts"
         android:summary="@string/pref_alerts_description"
         android:title="@string/pref_alerts_title" />
+    <CheckBoxPreference
+        android:key="sms_provider"
+        android:title="@string/pref_sms_provider_title" >
+    </CheckBoxPreference>
+
+    <EditTextPreference
+        android:dependency="sms_provider"
+        android:key="smsru_apikey"
+        android:title="@string/pref_smsru_apikey_title" >
+    </EditTextPreference>
 
 </PreferenceScreen>

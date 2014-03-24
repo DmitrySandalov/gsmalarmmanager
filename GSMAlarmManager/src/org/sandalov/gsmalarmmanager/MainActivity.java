@@ -1,10 +1,21 @@
 package org.sandalov.gsmalarmmanager;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
@@ -57,7 +68,7 @@ public class MainActivity extends ActionBarActivity {
 			Intent intent = new Intent(Intent.ACTION_MAIN);
 			intent.addCategory(Intent.CATEGORY_HOME);
 			intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			startActivity(intent);			
+			startActivity(intent);
 		}
 		return super.onOptionsItemSelected(item);
 	}
@@ -77,10 +88,13 @@ public class MainActivity extends ActionBarActivity {
 			View rootView = inflater.inflate(R.layout.fragment_main, container,
 					false);
 			Button b_arm = (Button) rootView.findViewById(R.id.button_arm);
-			Button b_disarm = (Button) rootView.findViewById(R.id.button_disarm);
+			Button b_disarm = (Button) rootView
+					.findViewById(R.id.button_disarm);
 			Button b_check = (Button) rootView.findViewById(R.id.button_check);
-			Button b_relay_on = (Button) rootView.findViewById(R.id.button_relay_on);
-			Button b_relay_off = (Button) rootView.findViewById(R.id.button_relay_off);
+			Button b_relay_on = (Button) rootView
+					.findViewById(R.id.button_relay_on);
+			Button b_relay_off = (Button) rootView
+					.findViewById(R.id.button_relay_off);
 			b_arm.setOnClickListener(this);
 			b_disarm.setOnClickListener(this);
 			b_check.setOnClickListener(this);
@@ -99,6 +113,8 @@ public class MainActivity extends ActionBarActivity {
 			String alarmPass = prefs.getString("alarm_password", "");
 			String alarmNum = prefs.getString("alarm_number", "");
 			boolean alertsOn = prefs.getBoolean("alerts", true);
+			boolean smsOverInternet = prefs.getBoolean("sms_provider", false);
+			String apiKey = prefs.getString("smsru_apikey", "");
 
 			String smsText = alarmPass;
 
@@ -120,12 +136,14 @@ public class MainActivity extends ActionBarActivity {
 				break;
 			}
 
-			sendSmsDialog(c, alarmNum, smsText, alertsOn);
+			sendSmsDialog(c, alarmNum, smsText, alertsOn, smsOverInternet,
+					apiKey);
 		}
 	}
 
 	public static void showAlert(final Context c, String title, String message,
-			final String sms, final String phoneNo) {
+			final String sms, final String phoneNo,
+			final boolean smsOverInternet, final String apiKey) {
 		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(c);
 		alertDialogBuilder.setTitle(title);
 		alertDialogBuilder
@@ -136,7 +154,8 @@ public class MainActivity extends ActionBarActivity {
 							public void onClick(DialogInterface dialog, int id) {
 								// if this button is clicked, close current
 								// activity
-								sendSms(c, phoneNo, sms);
+								sendSms(c, phoneNo, sms, smsOverInternet,
+										apiKey);
 							}
 						})
 				.setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -154,17 +173,31 @@ public class MainActivity extends ActionBarActivity {
 	}
 
 	public static void sendSmsDialog(Context c, String phoneNo, String sms,
-			boolean alertsOn) {
+			boolean alertsOn, boolean smsOverInternet, String apiKey) {
 		if (alertsOn) {
-			showAlert(c, "Send SMS?", "To: " + phoneNo + "\nMessage: " + sms,
-					sms, phoneNo);
+			String alertText = "To: " + phoneNo + "\nMessage: " + sms;
+			if (smsOverInternet) {
+				alertText += "\n (over internet)";
+			}
+			showAlert(c, "Send SMS?", alertText, sms, phoneNo, smsOverInternet,
+					apiKey);
 		} else {
-			sendSms(c, phoneNo, sms);
+			sendSms(c, phoneNo, sms, smsOverInternet, apiKey);
 		}
 
 	}
 
-	public static void sendSms(Context c, String phoneNo, String sms) {
+	public static void sendSms(Context c, String phoneNo, String sms,
+			boolean smsOverInternet, String apiKey) {
+
+		if ((smsOverInternet) && (apiKey.length() > 0)) {
+			sendSmsInternet(c, phoneNo, sms, apiKey);
+		} else {
+			sendSmsAndroid(c, phoneNo, sms);
+		}
+	}
+
+	public static void sendSmsAndroid(Context c, String phoneNo, String sms) {
 		try {
 			SmsManager smsManager = SmsManager.getDefault();
 			smsManager.sendTextMessage(phoneNo, null, sms, null, null);
@@ -174,7 +207,64 @@ public class MainActivity extends ActionBarActivity {
 					Toast.LENGTH_LONG).show();
 			e.printStackTrace();
 		}
+	}
+
+	public static void sendSmsInternet(Context c, String phoneNo, String sms,
+			String apiKey) {
+		
+		phoneNo = phoneNo.replaceAll("[^\\d.]", "");
+		
+		String urlString = "";
+		try {
+			urlString = "http://sms.ru/sms/send?api_id=" + apiKey + "&to="
+					+ phoneNo + "&text=" + URLEncoder.encode(sms, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		new CallAPI().execute(urlString);
 
 	}
+
+	private static class CallAPI extends AsyncTask<String, String, String> {
+
+		@Override
+		protected String doInBackground(String... params) {
+			String urlString = params[0]; // URL to call
+			String httpresp = "";
+			InputStream in = null;
+
+			// HTTP Get
+			try {
+				URL url = new URL(urlString);
+				HttpURLConnection urlConnection = (HttpURLConnection) url
+						.openConnection();
+				in = new BufferedInputStream(urlConnection.getInputStream());
+			} catch (Exception e) {
+				System.out.println(e.getMessage());
+				return e.getMessage();
+			}
+
+			BufferedReader reader = new BufferedReader(
+					new InputStreamReader(in));
+			StringBuilder sb = new StringBuilder();
+			String line = null;
+			try {
+				while ((line = reader.readLine()) != null) {
+					sb.append((line + "\n"));
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			} finally {
+				try {
+					in.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			httpresp = sb.toString();
+			return httpresp;
+		}
+	} // end CallAPI
 
 }

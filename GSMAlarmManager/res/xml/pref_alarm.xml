@@ -6,6 +6,7 @@
         android:inputType="phone"
         android:key="alarm_number"
         android:title="@string/pref_alarm_num_title"
+        android:dialogMessage="@string/pref_alarm_num_dialog_msg"
         android:summary="@string/pref_alarm_num_description" />
     <EditTextPreference
         android:defaultValue="123456"

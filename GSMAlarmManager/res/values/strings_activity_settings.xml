@@ -8,8 +8,11 @@
     <!-- Example General settings -->
     <string name="pref_header_general">General</string>
     <string name="pref_alerts_title">Alerts</string>
+    <string name="pref_sms_provider_title">Send sms via Internet</string>
+    <string name="pref_smsru_apikey_title">API Key (sms.ru)</string>
     <string name="pref_alerts_description">Show alerts before sending SMS</string>
     <string name="pref_alarm_num_title">Phone</string>
+    <string name="pref_alarm_num_dialog_msg">Format: +79xxxxxxxxx</string>
     <string name="pref_alarm_num_dialog">Enter alarm number</string>
     <string name="pref_alarm_num_description">Alarm\'s telephone number</string>
     <string name="pref_alarm_pass_title">Password</string>
